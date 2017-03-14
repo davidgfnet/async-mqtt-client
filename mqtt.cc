@@ -51,13 +51,13 @@ std::pair<unsigned, unsigned> decSize(uint8_t *inb, unsigned maxsize) {
 }
 
 AsyncMQTTClient::AsyncMQTTClient(std::string clientid)
- : clientid(clientid), keepalive(30), ccode(csConnecting) {
+ : clientid(clientid), keepalive(30), ccode(csConnecting), msgid(0) {
 
 	sendConnect();
 }
 
 AsyncMQTTClient::AsyncMQTTClient(std::string clientid, std::string user, std::string pass)
- : clientid(clientid), user(user), pass(pass), keepalive(30), ccode(csConnecting) {
+ : clientid(clientid), user(user), pass(pass), keepalive(30), ccode(csConnecting), msgid(0)  {
 
 	sendConnect();
 }
@@ -166,8 +166,10 @@ void AsyncMQTTClient::sendConnect() {
 }
 
 void AsyncMQTTClient::subscribe(std::string topic, uint8_t qos) {
+	msgid++;
+
 	std::string header("\x82", 1);       // Subscribe request
-	std::string msgid("\x00\x01", 2);
+	std::string msgid((char*)&msgid, 2);        // Mesage ID, always different (f*ck endianess)
 
 	// Request the topic with QoS = 0
 	std::string stopic = strWH(topic) + std::string("\0", 1);
@@ -182,6 +184,14 @@ void AsyncMQTTClient::subscribe(std::string topic, uint8_t qos) {
 void AsyncMQTTClient::publish(std::string topic, std::string payload, bool retain) {
 	// Publish header
 	std::string header = retain ? std::string("\x31", 1) : std::string("\x30", 1);
-	// TODO
+	// Message ID missing, only for QoS > 0
+
+	// Request the topic with QoS = 0
+	std::string pack = strWH(topic) + payload;
+
+	std::string out = header + encSize(pack.size()) + pack;
+
+	writeOutput(out);
+
 }
 

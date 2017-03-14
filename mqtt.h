@@ -57,6 +57,7 @@ protected:
 	unsigned keepalive;
 	ConnectionCode ccode;
 
+	uint16_t msgid;
 	std::string outbuffer, inbuffer;
 	std::list < std::pair<std::string, std::string> > messages;
 

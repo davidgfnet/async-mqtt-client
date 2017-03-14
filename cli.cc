@@ -24,7 +24,7 @@ int main(int argc, char ** argv) {
 	}
 
 	bool subscribed = false;
-	AsyncMQTTClient client("async_mqtt_client", argv[3], argv[4]);
+	AsyncMQTTClient client("cliclient_" + std::to_string(getpid()), argv[3], argv[4]);
 
 	while (true) {
 		fd_set rfds, wfds, efds;
@@ -41,10 +41,17 @@ int main(int argc, char ** argv) {
 		int r = recv(fdsock, tmpb, sizeof(tmpb), MSG_DONTWAIT);
 		if (r > 0)
 			client.inputCallback(std::string(tmpb, r));
+		else if (r == 0 || (r < 0 && errno != EWOULDBLOCK)) {
+			std::cerr << "read() closed/error in the connection" << std::endl;
+			exit(0);
+		}
 
 		if (client.isConnected() && !subscribed) {
 			subscribed = true;
-			client.subscribe("/#", 0);
+			if (argc == 7)
+				client.publish(argv[5], argv[6], 0);
+			else
+				client.subscribe("/#", 0);
 		}
 
 		std::string topic, value;
