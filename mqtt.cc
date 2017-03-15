@@ -51,13 +51,13 @@ std::pair<unsigned, unsigned> decSize(uint8_t *inb, unsigned maxsize) {
 }
 
 AsyncMQTTClient::AsyncMQTTClient(std::string clientid)
- : clientid(clientid), keepalive(30), ccode(csConnecting), msgid(0) {
+ : clientid(clientid), keepalive(30), ccode(csConnecting), msgid(0), lastping(time(0)) {
 
 	sendConnect();
 }
 
 AsyncMQTTClient::AsyncMQTTClient(std::string clientid, std::string user, std::string pass)
- : clientid(clientid), user(user), pass(pass), keepalive(30), ccode(csConnecting), msgid(0)  {
+ : clientid(clientid), user(user), pass(pass), keepalive(30), ccode(csConnecting), msgid(0), lastping(time(0)) {
 
 	sendConnect();
 }
@@ -128,6 +128,9 @@ unsigned AsyncMQTTClient::process() {
 			messages.push_back(std::make_pair(topic, value));
 		}
 		break;
+	case 5:
+		// This is a ping response
+		break;
 	};
 
 	// Consume these bytes
@@ -192,6 +195,18 @@ void AsyncMQTTClient::publish(std::string topic, std::string payload, bool retai
 	std::string out = header + encSize(pack.size()) + pack;
 
 	writeOutput(out);
+}
 
+void AsyncMQTTClient::sendPingReq() {
+	writeOutput(std::string("\xC0\x00", 2));
+	lastping = time(0);
+}
+
+// Check output function
+bool AsyncMQTTClient::hasOutput() {
+	// Send ping requests to mantain connection alive!
+	if (time(0) - lastping > keepalive * 2 / 3)
+		sendPingReq();
+	return outbuffer.size() > 0;
 }
 

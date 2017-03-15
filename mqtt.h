@@ -10,6 +10,7 @@
 #include <string>
 #include <list>
 #include <tuple>
+#include <time.h>
 
 enum ConnectionCode {
 	csConnected          = 0,
@@ -41,7 +42,7 @@ public:
 	bool getMessage(std::string &topic, std::string &value);
 
 	// Interface to the network
-	bool hasOutput() const { return outbuffer.size() > 0; }
+	bool hasOutput();
 	std::string getOutputBuffer(unsigned maxsize) const {
 		if (maxsize >= outbuffer.size())
 			return outbuffer;
@@ -58,9 +59,11 @@ protected:
 	ConnectionCode ccode;
 
 	uint16_t msgid;
+	time_t lastping;
 	std::string outbuffer, inbuffer;
 	std::list < std::pair<std::string, std::string> > messages;
 
+	void sendPingReq();
 	void sendConnect();
 	void writeOutput(std::string p);
 	unsigned process();

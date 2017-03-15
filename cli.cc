@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <unistd.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
@@ -27,21 +28,16 @@ int main(int argc, char ** argv) {
 	AsyncMQTTClient client("cliclient_" + std::to_string(getpid()), argv[3], argv[4]);
 
 	while (true) {
-		fd_set rfds, wfds, efds;
-		FD_ZERO(&rfds); FD_ZERO(&wfds); FD_ZERO(&efds);
-		FD_SET(fdsock, &rfds); FD_SET(fdsock, &efds);
-
+		struct pollfd pfd = { .fd = fdsock, .events = POLLIN | POLLERR };
 		if (client.hasOutput())
-			FD_SET(fdsock, &wfds);
-
-		// Wait for data in and/or out (and err!)
-		select(fdsock+1, &rfds, &wfds, &efds, NULL);
+			pfd.events |= POLLOUT;
+		poll(&pfd, 1, 1);
 
 		char tmpb[1024];
 		int r = recv(fdsock, tmpb, sizeof(tmpb), MSG_DONTWAIT);
 		if (r > 0)
 			client.inputCallback(std::string(tmpb, r));
-		else if (r == 0 || (r < 0 && errno != EWOULDBLOCK)) {
+		else if (r == 0 || (r < 0 && errno != EWOULDBLOCK && errno != EAGAIN)) {
 			std::cerr << "read() closed/error in the connection" << std::endl;
 			exit(0);
 		}
